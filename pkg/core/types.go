@@ -62,23 +62,31 @@ type VideoContent struct {
 	Duration int    `json:"duration"` // 视频时长，单位为秒
 }
 
-//Tool工具接口
+// Tool工具接口
 type Tool interface {
 	Name() string
 	Description() string
 
+	// Schema 返回工具的参数模式定义，用于告诉LLM工具的输入参数结构
 	Schema() ToolSchema
 
-	Execute(input json.RawMessage) (string, error)
+	// Execute 执行工具逻辑，接收工具输入，返回工具输出和可能的错误
+	Execute(input ToolInput) (ToolOutput, error)
 }
 
-//工具输出
-type ToolResult struct {
-	Contemt string
-	Data    map[string]any
+// 工具输入
+type ToolInput struct {
+	Arguments json.RawMessage `json:"arguments"`
+	Metadata  map[string]any  `json:"metadata,omitempty"`
 }
 
-//Tool工具参数模式定义
+// 工具输出
+type ToolOutput struct {
+	Content string         `json:"content"`
+	Data    map[string]any `json:"data,omitempty"`
+}
+
+// Tool工具参数模式定义
 type ToolSchema struct {
 	Type string `json:"type"`
 	//以下字段根据Type不同而不同
@@ -86,7 +94,20 @@ type ToolSchema struct {
 	Required   []string            `json:"required,omitempty"`
 }
 
-//单个参数属性
+// OpenAIFunction 表示OpenAI函数调用格式
+type OpenAIFunction struct {
+	Name        string                 `json:"name"`        // 函数名称
+	Description string                 `json:"description"` // 函数描述
+	Parameters  map[string]interface{} `json:"parameters"`  // 函数参数结构
+}
+
+// OllamaTool 表示Ollama工具调用格式
+type OllamaTool struct {
+	Type     string                 `json:"type"`     // 工具类型，固定为 "function"
+	Function map[string]interface{} `json:"function"` // 函数信息
+}
+
+// 单个参数属性
 type Property struct {
 	Type        string `json:"type"`
 	Description string `json:"description,omitempty"`
@@ -94,7 +115,7 @@ type Property struct {
 	Enum []string `json:"enum,omitempty"`
 }
 
-//记忆接口
+// 记忆接口
 type Memory interface {
 	//添加记忆
 	Add(msg Message) error
@@ -112,7 +133,7 @@ type Memory interface {
 	Clear() error
 }
 
-//LLM客户端接口
+// LLM客户端接口
 type LLMClient interface {
 	//非流式对话
 	Chat(messages []Message, tools []Tool) (Message, error)
@@ -121,7 +142,7 @@ type LLMClient interface {
 	ChatStream(messages []Message, tools []Tool) (<-chan Message, <-chan error)
 }
 
-//Agent接口
+// Agent接口
 type Agent interface {
 	//Run一次完整的对话流程
 	Run(input string) (*Message, error)

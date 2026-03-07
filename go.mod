@@ -1,4 +1,4 @@
-module Pandora
+module github.com/DaWesen/Pandora
 
 go 1.25.1
 
