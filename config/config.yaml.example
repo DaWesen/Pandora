@@ -1,0 +1,49 @@
+# Pandora AI Assistant 配置文件
+# 复制为 config.yaml 并根据需要修改
+
+# Agent 配置
+agent:
+  name: "Pandora Assistant"
+  description: "You are a helpful assistant. Use tools when needed."
+  max_steps: 50
+
+# LLM 配置
+llm:
+  # 后端类型: ollama, openai, claude, azure
+  backend: "ollama"
+  # API 基础地址
+  base_url: "http://localhost:11434"
+  # API 密钥（云端服务需要）
+  api_key: ""
+  # 模型名称
+  model: "llama3"
+  # 模型版本（Azure需要）
+  model_version: ""
+  # OpenAI 组织ID（可选）
+  organization_id: ""
+  # 生成参数
+  temperature: 0.7
+  max_tokens: 2048
+  top_p: 0.9
+  frequency_penalty: 0
+  presence_penalty: 0
+  # 高级设置
+  timeout_seconds: 60
+  retry_attempts: 3
+  stream: true
+  enable_thinking: false
+
+# 内存配置
+memory:
+  # 内存类型: in-memory, file, redis
+  type: "in-memory"
+  # 最大消息数
+  max_size: 50
+  # 是否持久化
+  persistent: false
+  # 持久化路径（仅当 persistent 为 true 时有效）
+  persistent_path: "./memory.json"
+  # 向量数据库URL（如Pinecone、Weaviate等）
+  vector_db_url: ""
+  # 用于生成向量的模型ID
+  embedding_model: ""

@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	Agent AgentConfig
-	LLM   LLMConfig
+	Agent  AgentConfig
+	LLM    LLMConfig
+	Memory MemoryConfig
 }
 
 type AgentConfig struct {

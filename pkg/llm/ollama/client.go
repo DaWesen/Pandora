@@ -14,10 +14,11 @@ import (
 )
 
 type Client struct {
-	baseURL    string
-	model      string
-	httpClient *http.Client
-	timeout    time.Duration
+	baseURL       string
+	model         string
+	httpClient    *http.Client
+	timeout       time.Duration
+	supportsTools bool
 }
 
 type OllamaMessage struct {
@@ -82,10 +83,11 @@ func NewClient(baseURL, model string) *Client {
 		baseURL = "http://localhost:11434"
 	}
 	return &Client{
-		baseURL:    baseURL,
-		model:      model,
-		httpClient: &http.Client{Timeout: 120 * time.Second},
-		timeout:    120 * time.Second,
+		baseURL:       baseURL,
+		model:         model,
+		httpClient:    &http.Client{Timeout: 120 * time.Second},
+		timeout:       120 * time.Second,
+		supportsTools: true,
 	}
 }
 
@@ -95,14 +97,11 @@ func (c *Client) Chat(messages []core.Message, tools []core.Tool) (core.Message,
 	for i, msg := range messages {
 		ollamaMsgs[i] = c.toOllamaMessage(msg)
 	}
-	var ollamaTools []OllamaTool
-	if len(tools) > 0 {
-		ollamaTools = c.toOllamaTools(tools)
-	}
+
+	// 构建请求
 	reqBody := ChatRequest{
 		Model:    c.model,
 		Messages: ollamaMsgs,
-		Tools:    ollamaTools,
 		Stream:   false,
 		Options: map[string]interface{}{
 			"temperature":    0.7,
@@ -110,6 +109,12 @@ func (c *Client) Chat(messages []core.Message, tools []core.Tool) (core.Message,
 			"top_p":          0.9,
 			"repeat_penalty": 1.1,
 		},
+	}
+
+	// 只有当有工具且模型支持工具时才添加tools
+	if len(tools) > 0 && c.supportsTools {
+		ollamaTools := c.toOllamaTools(tools)
+		reqBody.Tools = ollamaTools
 	}
 
 	// 序列化请求体
@@ -129,9 +134,44 @@ func (c *Client) Chat(messages []core.Message, tools []core.Tool) (core.Message,
 	}
 	defer resp.Body.Close()
 
+	// 读取响应
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return core.Message{}, err
+	}
+
+	// 检查是否是工具不支持的错误
+	if strings.Contains(string(bodyBytes), "does not support tools") {
+		// 标记模型不支持工具，后续请求不再尝试
+		c.supportsTools = false
+		// 重新构建请求，不包含工具
+		reqBody.Tools = nil
+		requestJSON, err = json.Marshal(reqBody)
+		if err != nil {
+			return core.Message{}, err
+		}
+
+		// 重新发送请求
+		resp, err = c.httpClient.Post(
+			c.baseURL+"/api/chat",
+			"application/json",
+			bytes.NewBuffer(requestJSON),
+		)
+		if err != nil {
+			return core.Message{}, err
+		}
+		defer resp.Body.Close()
+
+		// 读取新的响应
+		bodyBytes, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return core.Message{}, err
+		}
+	}
+
 	// 解析响应
 	var chatResp ChatResponse
-	if err := json.NewDecoder(resp.Body).Decode(&chatResp); err != nil {
+	if err := json.Unmarshal(bodyBytes, &chatResp); err != nil {
 		return core.Message{}, err
 	}
 
@@ -155,7 +195,7 @@ func (c *Client) ChatStream(messages []core.Message, tools []core.Tool) (<-chan 
 			ollamaMsgs[i] = c.toOllamaMessage(msg)
 		}
 		var ollamaTools []OllamaTool
-		if len(tools) > 0 {
+		if len(tools) > 0 && c.supportsTools {
 			ollamaTools = c.toOllamaTools(tools)
 		}
 		reqBody := ChatRequest{
