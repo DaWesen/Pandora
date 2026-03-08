@@ -154,3 +154,10 @@ type Agent interface {
 	//工具管理
 	RegisterTool(tool Tool) error
 }
+
+// 工具注册表接口
+type ToolRegistry interface {
+	Register(tool Tool) error
+	List() []Tool
+	Execute(name string, input ToolInput) (ToolOutput, error)
+}

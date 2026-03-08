@@ -39,11 +39,11 @@ func (m *ShortTerm) Add(msg core.Message) error {
 }
 
 // 获取最近的n条消息
-func (m *ShortTerm) GetRecent(n int) []core.Message {
+func (m *ShortTerm) GetRecent(n int) ([]core.Message, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if n <= 0 {
-		return []core.Message{}
+		return []core.Message{}, nil
 	}
 	if n > m.items.Len() {
 		n = m.items.Len()
@@ -56,11 +56,11 @@ func (m *ShortTerm) GetRecent(n int) []core.Message {
 			count--
 		}
 	}
-	return result
+	return result, nil
 }
 
 // 获取所有消息
-func (m *ShortTerm) GetAll() []core.Message {
+func (m *ShortTerm) GetAll() ([]core.Message, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	result := make([]core.Message, 0, m.items.Len())
@@ -69,11 +69,11 @@ func (m *ShortTerm) GetAll() []core.Message {
 			result = append(result, msg)
 		}
 	}
-	return result
+	return result, nil
 }
 
 // 根据查询获取相关消息
-func (m *ShortTerm) Query(query string) ([]core.Message, error) {
+func (m *ShortTerm) Query(query string, n int) ([]core.Message, error) {
 	// 简单的查询实现：返回包含查询字符串的消息
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -82,6 +82,9 @@ func (m *ShortTerm) Query(query string) ([]core.Message, error) {
 		if msg, ok := e.Value.(core.Message); ok {
 			if strings.Contains(msg.Content, query) {
 				result = append(result, msg)
+				if n > 0 && len(result) >= n {
+					break
+				}
 			}
 		}
 	}

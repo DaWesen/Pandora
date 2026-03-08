@@ -179,7 +179,9 @@ func (c *Client) ChatStream(messages []core.Message, tools []core.Tool) (<-chan 
 		}
 
 		// 创建请求
-		req, err := http.NewRequest("POST", c.baseURL+"/api/chat", bytes.NewBuffer(requestJSON))
+		req, err := http.NewRequest("POST",
+			c.baseURL+"/api/chat",
+			bytes.NewBuffer(requestJSON))
 		if err != nil {
 			errChan <- err
 			return
