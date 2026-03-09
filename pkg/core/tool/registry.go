@@ -37,6 +37,32 @@ func (r *Registry) Register(tool core.Tool) error {
 	return nil
 }
 
+// 批量注册工具
+func (r *Registry) BatchRegister(tools []core.Tool) error {
+	if len(tools) <= 0 {
+		return fmt.Errorf("tool list cannot be empty")
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, tool := range tools {
+		if tool == nil {
+			return fmt.Errorf("cannot register nil tool")
+		}
+		name := tool.Name()
+		if name == "" {
+			return fmt.Errorf("tool name cannot be empty")
+		}
+		if _, exists := r.tools[name]; exists {
+			return fmt.Errorf("tool with name '%s' already exists", name)
+		}
+		r.tools[name] = tool
+	}
+
+	return nil
+}
+
 // 获得指定名称的工具
 func (r *Registry) Get(name string) (core.Tool, bool) {
 	r.mu.RLock()
