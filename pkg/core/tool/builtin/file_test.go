@@ -144,3 +144,76 @@ func TestFileTool_ListDirectory(t *testing.T) {
 		t.Errorf("Expected non-empty output content")
 	}
 }
+
+func TestFileTool_SearchFiles(t *testing.T) {
+	// 创建测试目录和文件
+	testDir := t.TempDir()
+	subDir := filepath.Join(testDir, "subdir")
+	if err := os.Mkdir(subDir, 0755); err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+
+	// 创建测试文件
+	testFile1 := filepath.Join(testDir, "file1.txt")
+	testFile2 := filepath.Join(testDir, "file2.log")
+	testFile3 := filepath.Join(subDir, "file3.txt")
+
+	if err := os.WriteFile(testFile1, []byte("content1"), 0644); err != nil {
+		t.Fatalf("Failed to create test file1: %v", err)
+	}
+	if err := os.WriteFile(testFile2, []byte("content2"), 0644); err != nil {
+		t.Fatalf("Failed to create test file2: %v", err)
+	}
+	if err := os.WriteFile(testFile3, []byte("content3"), 0644); err != nil {
+		t.Fatalf("Failed to create test file3: %v", err)
+	}
+
+	// 测试递归搜索
+	params := map[string]interface{}{
+		"operation": "search",
+		"path":      testDir,
+		"pattern":   "*.txt",
+		"recursive": true,
+	}
+	args, err := json.Marshal(params)
+	if err != nil {
+		t.Fatalf("Failed to marshal params: %v", err)
+	}
+	input := core.ToolInput{Arguments: args}
+
+	// 执行工具
+	tool := NewFileTool()
+	output, err := tool.Execute(input)
+	if err != nil {
+		t.Fatalf("Failed to execute search operation: %v", err)
+	}
+
+	// 验证结果
+	if output.Content == "" {
+		t.Errorf("Expected non-empty output content")
+	}
+
+	// 测试非递归搜索
+	params = map[string]interface{}{
+		"operation": "search",
+		"path":      testDir,
+		"pattern":   "*.txt",
+		"recursive": false,
+	}
+	args, err = json.Marshal(params)
+	if err != nil {
+		t.Fatalf("Failed to marshal params: %v", err)
+	}
+	input = core.ToolInput{Arguments: args}
+
+	// 执行工具
+	output, err = tool.Execute(input)
+	if err != nil {
+		t.Fatalf("Failed to execute search operation: %v", err)
+	}
+
+	// 验证结果
+	if output.Content == "" {
+		t.Errorf("Expected non-empty output content")
+	}
+}

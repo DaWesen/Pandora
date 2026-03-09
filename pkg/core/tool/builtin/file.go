@@ -30,12 +30,12 @@ func (t *FileTool) Schema() core.ToolSchema {
 		Properties: map[string]core.Property{
 			"operation": {
 				Type:        "string",
-				Description: "操作类型：'read'(读取), 'write'(写入), 'list'(列出)",
-				Enum:        []string{"read", "write", "list"},
+				Description: "操作类型：'read'(读取), 'write'(写入), 'list'(列出), 'search'(查找)",
+				Enum:        []string{"read", "write", "list", "search"},
 			},
 			"path": {
 				Type:        "string",
-				Description: "文件路径",
+				Description: "文件路径或搜索目录",
 			},
 			"content": {
 				Type:        "string",
@@ -44,6 +44,14 @@ func (t *FileTool) Schema() core.ToolSchema {
 			"overwrite": {
 				Type:        "boolean",
 				Description: "是否覆盖文件，仅在操作为 'write' 时使用，默认为 false",
+			},
+			"pattern": {
+				Type:        "string",
+				Description: "搜索模式，仅在操作为 'search' 时使用，如 '*.txt'",
+			},
+			"recursive": {
+				Type:        "boolean",
+				Description: "是否递归搜索，仅在操作为 'search' 时使用，默认为 true",
 			},
 		},
 		Required: []string{"operation", "path"},
@@ -57,6 +65,8 @@ func (t *FileTool) Execute(input core.ToolInput) (core.ToolOutput, error) {
 		Path      string `json:"path"`
 		Content   string `json:"content,omitempty"`
 		Overwrite bool   `json:"overwrite,omitempty"`
+		Pattern   string `json:"pattern,omitempty"`
+		Recursive bool   `json:"recursive,omitempty"`
 	}
 	if err := json.Unmarshal(input.Arguments, &params); err != nil {
 		return core.ToolOutput{}, err
@@ -68,6 +78,8 @@ func (t *FileTool) Execute(input core.ToolInput) (core.ToolOutput, error) {
 		return t.writeFile(params.Path, params.Content, params.Overwrite)
 	case "list":
 		return t.listDirectory(params.Path)
+	case "search":
+		return t.searchFiles(params.Path, params.Pattern, params.Recursive)
 	default:
 		return core.ToolOutput{}, fmt.Errorf("不支持的操作类型: %s", params.Operation)
 	}
@@ -149,6 +161,71 @@ func (t *FileTool) listDirectory(path string) (core.ToolOutput, error) {
 			"path":  path,
 			"items": items,
 			"count": len(items),
+		},
+	}, nil
+}
+
+// 查找文件
+func (t *FileTool) searchFiles(dir, pattern string, recursive bool) (core.ToolOutput, error) {
+	if pattern == "" {
+		pattern = "*"
+	}
+
+	var matches []string
+	var err error
+
+	if recursive {
+		// 递归搜索
+		err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() {
+				matched, err := filepath.Match(pattern, filepath.Base(path))
+				if err != nil {
+					return err
+				}
+				if matched {
+					matches = append(matches, path)
+				}
+			}
+			return nil
+		})
+	} else {
+		// 非递归搜索
+		searchPath := filepath.Join(dir, pattern)
+		matches, err = filepath.Glob(searchPath)
+	}
+
+	if err != nil {
+		return core.ToolOutput{}, fmt.Errorf("搜索文件失败: %v", err)
+	}
+
+	// 收集文件信息
+	var items []map[string]any
+	for _, path := range matches {
+		info, err := os.Stat(path)
+		var size int64 = 0
+		var modTime string = ""
+		if err == nil {
+			size = info.Size()
+			modTime = info.ModTime().Format("2006-01-02 15:04:05")
+		}
+		items = append(items, map[string]any{
+			"path":    path,
+			"size":    size,
+			"modTime": modTime,
+		})
+	}
+
+	return core.ToolOutput{
+		Content: fmt.Sprintf("在 %s 中找到 %d 个匹配文件", dir, len(items)),
+		Data: map[string]any{
+			"directory": dir,
+			"pattern":   pattern,
+			"recursive": recursive,
+			"items":     items,
+			"count":     len(items),
 		},
 	}, nil
 }
