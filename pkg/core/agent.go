@@ -1,6 +1,8 @@
 package core
 
-import "time"
+import (
+	"time"
+)
 
 type AgentImpl struct {
 	llm            LLMClient
@@ -96,7 +98,45 @@ func (a *AgentImpl) ClearContext() error {
 	return a.memory.Clear()
 }
 
-//RegisterTool 注册工具到工具库
+// RegisterTool 注册工具到工具库
 func (a *AgentImpl) RegisterTool(tool Tool) error {
 	return a.toolRegistry.Register(tool)
+}
+
+// SystemPrompt 返回系统提示
+func (a *AgentImpl) SystemPrompt() string {
+	return a.systemPrompt
+}
+
+// StreamRun 执行流式对话
+func (a *AgentImpl) StreamRun(input string) (<-chan Message, <-chan error) {
+	userMsg := Message{
+		Role:      RoleUser,
+		Content:   input,
+		Timestamp: time.Now().Unix(),
+	}
+	if err := a.memory.Add(userMsg); err != nil {
+		errChan := make(chan error)
+		close(errChan)
+		return nil, errChan
+	}
+
+	systemMsg := Message{
+		Role:    RoleSystem,
+		Content: a.systemPrompt,
+	}
+
+	recentMsgs, err := a.memory.GetRecent(a.maxContextSize)
+	if err != nil {
+		errChan := make(chan error)
+		close(errChan)
+		return nil, errChan
+	}
+
+	messages := []Message{systemMsg}
+	messages = append(messages, recentMsgs...)
+	tools := a.toolRegistry.List()
+
+	// 调用流式聊天
+	return a.llm.ChatStream(messages, tools)
 }

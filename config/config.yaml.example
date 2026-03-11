@@ -9,13 +9,38 @@ agent:
 
 # LLM 配置
 llm:
-  # 后端类型: ollama, openai, claude, azure
+  # 后端类型: ollama, openai, claude, azure, deepseek, qwen, doubao, google, cohere
   backend: "ollama"
   # API 基础地址
+  # - Ollama: http://localhost:11434
+  # - OpenAI: https://api.openai.com/v1
+  # - Claude: https://api.anthropic.com/v1
+  # - DeepSeek: https://api.deepseek.com/v1
+  # - Qwen: https://api.qwen.cn/v1
+  # - Doubao: https://ark.cn-beijing.volces.com/api/v3
+  # - Google: https://generativelanguage.googleapis.com/v1
+  # - Cohere: https://api.cohere.ai/v1
+  # - 自定义代理: 例如 https://your-proxy.com/v1
   base_url: "http://localhost:11434"
   # API 密钥（云端服务需要）
+  # - OpenAI: 从 https://platform.openai.com/api-keys 获取
+  # - Claude: 从 https://console.anthropic.com/ 获取
+  # - DeepSeek: 从 https://platform.deepseek.com/ 获取
+  # - Qwen: 从 https://cloud.baidu.com/ 获取
+  # - Doubao: 从 https://console.volcengine.com/ark/ 获取
+  # - Google: 从 https://makersuite.google.com/ 获取
+  # - Cohere: 从 https://dashboard.cohere.com/ 获取
+  # - 环境变量: 可设置为 "${API_KEY}" 从环境变量读取
   api_key: ""
   # 模型名称
+  # - Ollama: llama3, mistral, gemma, phi3等
+  # - OpenAI: gpt-4o, gpt-4-turbo, gpt-3.5-turbo等
+  # - Claude: claude-3-opus-20240229, claude-3-sonnet-20240229等
+  # - DeepSeek: deepseek-chat, deepseek-coder等
+  # - Qwen: qwen-turbo, qwen-plus, qwen-max等
+  # - Doubao: ep-20240311123456-abcde等
+  # - Google: gemini-pro, gemini-ultra等
+  # - Cohere: command, command-light等
   model: "llama3"
   # 模型版本（Azure需要）
   model_version: ""
